@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { SelectGrid } from '@/components/ui/SelectGrid';
 import { formatCurrency } from '@/lib/formatters';
 import { Plus, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { TransactionType } from '@/types';
-import { TRANSACTION_TYPE_LABELS } from '@/lib/constants';
+import { TRANSACTION_TYPE_LABELS, CATEGORY_ICONS, CATEGORY_COLORS } from '@/lib/constants';
 
 const createCategorySchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -50,6 +51,8 @@ export default function ExpensesByCategory({ filteredTransactions, accountName }
     handleSubmit: handleSubmitCreate,
     formState: { errors: errorsCreate },
     reset: resetCreate,
+    watch: watchCreate,
+    setValue: setValueCreate,
   } = useForm<CreateCategoryFormData>({
     resolver: zodResolver(createCategorySchema),
     defaultValues: {
@@ -60,6 +63,11 @@ export default function ExpensesByCategory({ filteredTransactions, accountName }
       budget: undefined,
     },
   });
+
+  const selectedIcon = watchCreate('icon');
+  const selectedColor = watchCreate('color');
+  const categoryName = watchCreate('name');
+  const categoryType = watchCreate('type');
 
   const {
     register: registerBudget,
@@ -304,63 +312,116 @@ export default function ExpensesByCategory({ filteredTransactions, accountName }
           setIsCreateModalOpen(false);
           resetCreate();
         }}
-        title="Nova Categoria"
+        title="✨ Nova Categoria"
         size="md"
       >
-        <form onSubmit={handleSubmitCreate(onSubmitCreate)} className="space-y-4">
-          <Input
-            label="Nome"
-            placeholder="Ex: Alimentação"
-            error={errorsCreate.name}
-            {...registerCreate('name')}
-          />
-
-          <Input
-            label="Ícone (Emoji)"
-            placeholder="🍔"
-            maxLength={2}
-            error={errorsCreate.icon}
-            {...registerCreate('icon')}
-          />
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Cor</label>
-            <input
-              type="color"
-              className="w-full h-10 border border-input rounded-lg cursor-pointer"
-              {...registerCreate('color')}
+        <form onSubmit={handleSubmitCreate(onSubmitCreate)} className="space-y-5">
+          {/* Nome */}
+          <div>
+            <label htmlFor="name" className="block text-sm font-semibold text-foreground mb-2">
+              Nome da Categoria
+            </label>
+            <Input
+              id="name"
+              placeholder="Ex: Alimentação, Transporte, Lazer"
+              error={errorsCreate.name}
+              {...registerCreate('name')}
+              className="text-lg"
             />
-            {errorsCreate.color && (
-              <span className="text-sm text-red-500">{errorsCreate.color.message}</span>
-            )}
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Tipo</label>
-            <select
-              className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              {...registerCreate('type')}
-            >
-              {typeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+          {/* Tipo - Botões visuais */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              Tipo
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {typeOptions.map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setValueCreate('type', type.value as TransactionType)}
+                  className={`py-2 px-2 rounded-xl border-2 transition-all text-sm font-semibold ${
+                    categoryType === type.value
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                  }`}
+                >
+                  {type.label}
+                </button>
               ))}
-            </select>
+            </div>
             {errorsCreate.type && (
-              <span className="text-sm text-red-500">{errorsCreate.type.message}</span>
+              <p className="text-sm text-red-600 mt-1">{errorsCreate.type.message}</p>
             )}
           </div>
 
-          <Input
-            label="Limite de Gasto (Opcional)"
-            placeholder="Ex: 1000.00"
-            type="number"
-            step="0.01"
-            min="0"
-            error={errorsCreate.budget}
-            {...registerCreate('budget', { valueAsNumber: true })}
+          {/* Ícone - Seletor visual com emojis predefinidos */}
+          <SelectGrid
+            label="Escolha um Ícone"
+            items={CATEGORY_ICONS.map(emoji => ({
+              value: emoji,
+              label: '',
+              icon: emoji,
+            }))}
+            value={selectedIcon}
+            onChange={(value) => setValueCreate('icon', value)}
+            placeholder="Selecione um ícone"
+            columns={8}
+            error={errorsCreate.icon?.message}
           />
+
+          {/* Cor - Seletor visual */}
+          <SelectGrid
+            label="Escolha uma Cor"
+            items={CATEGORY_COLORS.map(color => ({
+              value: color,
+              label: '',
+              color: color,
+            }))}
+            value={selectedColor}
+            onChange={(value) => setValueCreate('color', value)}
+            placeholder="Selecione uma cor"
+            columns={5}
+            error={errorsCreate.color?.message}
+          />
+
+          {/* Limite de Gasto (Opcional) */}
+          <div>
+            <label htmlFor="budget" className="block text-sm font-semibold text-foreground mb-2">
+              Limite de Gasto Mensal (Opcional)
+            </label>
+            <Input
+              id="budget"
+              placeholder="Ex: 500.00"
+              type="number"
+              step="0.01"
+              min="0"
+              error={errorsCreate.budget}
+              {...registerCreate('budget', { valueAsNumber: true })}
+            />
+          </div>
+
+          {/* Preview Card */}
+          {categoryName && selectedIcon && selectedColor && (
+            <div className="p-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50">
+              <p className="text-xs text-gray-500 mb-2 font-semibold">📱 PREVIEW</p>
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm"
+                  style={{ backgroundColor: selectedColor }}
+                >
+                  <span className="text-2xl">{selectedIcon}</span>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">{categoryName}</p>
+                  <p className="text-xs text-gray-500">
+                    {typeOptions.find(t => t.value === categoryType)?.label}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <ModalFooter>
             <Button
@@ -377,8 +438,9 @@ export default function ExpensesByCategory({ filteredTransactions, accountName }
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
+              className="min-w-[120px]"
             >
-              Criar Categoria
+              {isSubmitting ? '⏳ Criando...' : '✨ Criar'}
             </Button>
           </ModalFooter>
         </form>

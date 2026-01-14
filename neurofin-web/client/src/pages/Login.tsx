@@ -26,10 +26,12 @@ export default function Login() {
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     try {
-      console.log(data)
-      await api.post('/auth/request-login', data);
+      // Remove formatação do CPF antes de enviar (mantém apenas números)
+      const identifier = data.identifier.replace(/\D/g, '');
+      
+      await api.post('/auth/request-login', { identifier });
       // Redirect to OTP verification
-      sessionStorage.setItem('loginIdentifier', data.identifier);
+      sessionStorage.setItem('loginIdentifier', identifier);
       setLocation('/auth/verify-otp')
       toast.success('Código OTP enviado para seu email!');
     } catch (error: any) {
