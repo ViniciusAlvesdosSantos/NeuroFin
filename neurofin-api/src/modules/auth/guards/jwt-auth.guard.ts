@@ -24,10 +24,9 @@ export class JwtAuthGuard implements CanActivate {
         secret: this.configService.get('JWT_SECRET')
       });
 
-      // Adiciona o payload do usuário na requisição
       request['user'] = payload;
     } catch (error) {
-    console.log('ERRO NO GUARD:', error.message);
+      console.log('❌ ERRO NO GUARD:', error.message);
       throw new UnauthorizedException('Token inválido ou expirado');
     }
 
