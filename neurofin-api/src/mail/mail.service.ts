@@ -41,17 +41,17 @@ export class MailService {
   async sendVerificationEmail(to: string, verificationUrl: string) {
     try {
       const info = await this.transporter.sendMail({
-        from: this.configService.get('SMTP_FROM', '"Molda Invest" <vinicius.adsbusiness@gmail.com>'),
+        from: this.configService.get('SMTP_FROM', '"NeuroFin" <vinicius.adsbusiness@gmail.com>'),
         to,
-        subject: 'Verifique seu email - Molda Invest',
+        subject: 'Verifique seu email - NeuroFin',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #6366f1; margin: 0;">🚀 Molda Invest</h1>
+              <h1 style="color: #6366f1; margin: 0;">🚀 NeuroFin</h1>
             </div>
             
             <div style="background: #f8fafc; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
-              <h2 style="color: #1e293b; margin-top: 0;">Bem-vindo ao Molda Invest!</h2>
+              <h2 style="color: #1e293b; margin-top: 0;">Bem-vindo ao NeuroFin!</h2>
               <p style="color: #475569; font-size: 16px; line-height: 1.6;">
                 Estamos felizes em ter você conosco. Para começar a usar sua conta, 
                 precisamos verificar seu email.
@@ -110,13 +110,13 @@ export class MailService {
   async sendLoginOtp(to: string, otpCode: string) {
     try {
       const info = await this.transporter.sendMail({
-        from: this.configService.get('SMTP_FROM', '"Molda Invest" <vinicius.adsbusiness@gmail.com>'),
+        from: this.configService.get('SMTP_FROM', '"NeuroFin" <vinicius.adsbusiness@gmail.com>'),
         to,
-        subject: 'Seu código de login - Molda Invest',
+        subject: 'Seu código de login - NeuroFin',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #6366f1; margin: 0;">🔐 Molda Invest</h1>
+              <h1 style="color: #6366f1; margin: 0;">🔐 NeuroFin</h1>
             </div>
             
             <div style="background: #f8fafc; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
@@ -169,9 +169,9 @@ export class MailService {
   async testEmail(to: string) {
     try {
       const info = await this.transporter.sendMail({
-        from: this.configService.get('SMTP_FROM', '"Molda Invest" <vinicius.adsbusiness@gmail.com>'),
+        from: this.configService.get('SMTP_FROM', '"NeuroFin" <vinicius.adsbusiness@gmail.com>'),
         to,
-        subject: '🧪 Email de Teste - Molda Invest',
+        subject: '🧪 Email de Teste - NeuroFin',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #10b981;">✅ Email Funcionando!</h1>

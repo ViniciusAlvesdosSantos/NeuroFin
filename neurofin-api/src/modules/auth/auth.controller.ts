@@ -8,8 +8,10 @@ import {
   UseGuards,
   Get,
   Request,
-  BadRequestException
+  BadRequestException,
+  Res
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -267,9 +269,36 @@ export class AuthController {
       }
     }
   })
-  async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    return this.authService.verifyOtp(verifyOtpDto);
-  }
+  async verifyOtp(
+  @Body() verifyOtpDto: VerifyOtpDto,
+  @Res({ passthrough: true }) response: Response
+) {
+  const result = await this.authService.verifyOtp(verifyOtpDto);
+  
+  // ✅ Salvar accessToken em cookie HttpOnly (opcional, para dupla segurança)
+  response.cookie('accessToken', result.accessToken, {
+    httpOnly: true,
+    secure: false, // true apenas em produção com HTTPS
+    sameSite: 'lax',
+    maxAge: 3600000 // 1 hora
+  });
+  
+  // ✅ Salvar refreshToken em cookie HttpOnly
+  response.cookie('refreshToken', result.refreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 3600000 // 7 dias
+  });
+  
+  // Retornar tokens E user no body (para localStorage do frontend)
+  return {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    user: result.user,
+    isFirstLogin: result.user.isFirstLogin // campo do banco
+  };
+}
 
   // ========================================
   // REFRESH TOKEN
