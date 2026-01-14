@@ -6,7 +6,7 @@ import { Wallet, ArrowLeftRight, Tag, ChevronRight, ChevronLeft } from 'lucide-r
 
 const ONBOARDING_STEPS = [
   {
-    title: 'Bem-vindo ao Molda Invest',
+    title: 'Bem-vindo ao NeuroFin',
     description: 'Sua plataforma completa de gestão financeira e investimentos',
     icon: '👋',
   },

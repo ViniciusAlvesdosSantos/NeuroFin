@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createCategorySchema } from '@/lib/validators';
 import Header from '@/components/Header';
+import QuickAddButton from '@/components/QuickAddButton';
 
 export default function Categories() {
   const isAuthenticated = useRequireAuth();
@@ -244,6 +245,9 @@ export default function Categories() {
           </ModalFooter>
         </form>
       </Modal>
+
+      {/* Quick Add Button (FAB) */}
+      <QuickAddButton />
     </div>
   );
 }

@@ -29,6 +29,15 @@ export const formatDate = (dateString: string): string => {
   }
 };
 
+export const formatTime = (timeString: string): string => {
+  try {
+    const time = typeof timeString === 'string' ? parseISO(timeString) : timeString
+    return format(time, 'HH:mm', { locale: ptBR })
+  } catch {
+    return timeString
+  }
+}
+
 /**
  * Format a datetime string to dd/MM/yyyy HH:mm
  * @param dateString - ISO datetime string

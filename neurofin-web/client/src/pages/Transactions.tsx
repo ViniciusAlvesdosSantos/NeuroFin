@@ -13,6 +13,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import CreateTransactionModal from '@/components/ui/CreateTransactionModal';
 import Header from '@/components/Header';
+import QuickAddButton from '@/components/QuickAddButton';
 
 export default function Transactions() {
   const isAuthenticated = useRequireAuth();
@@ -164,6 +165,9 @@ export default function Transactions() {
       onClose={()=> setIsModalOpen(false)}
       onSuccess={handleTransactionCreated}
       />
+
+      {/* Quick Add Button (FAB) */}
+      <QuickAddButton />
     </div>
   );
 }
