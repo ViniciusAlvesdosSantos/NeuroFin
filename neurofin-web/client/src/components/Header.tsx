@@ -65,7 +65,7 @@ export default function Header({ showBalance = true }: HeaderProps) {
               <Wallet className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-semibold text-foreground">Molda Invest</h1>
+              <h1 className="font-semibold text-foreground">NeuroFin</h1>
               <p className="text-xs text-muted-foreground">Gestão Financeira</p>
             </div>
           </div>
@@ -123,7 +123,7 @@ export default function Header({ showBalance = true }: HeaderProps) {
                 <Wallet className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">Molda Invest</h2>
+                <h2 className="font-semibold text-foreground">NeuroFin</h2>
                 <p className="text-xs text-muted-foreground">Menu</p>
               </div>
             </div>

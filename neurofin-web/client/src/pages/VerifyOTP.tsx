@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import api from '@/lib/api';
 import { Shield } from 'lucide-react';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 const otpSchema = z.object({
   otpCode: z.string()
@@ -21,6 +22,7 @@ type OtpFormData = z.infer<typeof otpSchema>;
 
 export default function VerifyOtp() {
   const [, setLocation] = useLocation();
+  const { setUser } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [identifier, setIdentifier] = useState('');
@@ -52,14 +54,41 @@ export default function VerifyOtp() {
         otpCode: data.otpCode,
       });
       
-      const { accessToken, refreshToken } = response.data;
+      const { accessToken, refreshToken, user, isFirstLogin } = response.data;
+      
+      console.log('✅ Resposta do verify-otp:', { 
+        accessToken: accessToken?.substring(0, 20) + '...', 
+        refreshToken: refreshToken?.substring(0, 20) + '...', 
+        user: user?.email, 
+        isFirstLogin 
+      });
+      
+      // Salvar tokens no localStorage
       localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken); 
+      localStorage.setItem('refreshToken', refreshToken);
+      
+      // Verificar se foi salvo corretamente
+      const savedToken = localStorage.getItem('accessToken');
+      console.log('🔍 Token salvo no localStorage:', savedToken?.substring(0, 20) + '...');
+      console.log('🔍 Tokens são iguais?', savedToken === accessToken);
+      
+      // Atualizar estado global do usuário
+      setUser(user);
+      console.log('✅ setUser chamado com:', user);
+      
+      // Limpar identifier temporário
       sessionStorage.removeItem('loginIdentifier');
       
       toast.success('Login realizado com sucesso!');
 
-      setLocation('/dashboard');
+      // Redirecionar baseado se é primeiro login
+      if (isFirstLogin) {
+        console.log('🔄 Redirecionando para /onboarding');
+        setLocation('/onboarding');
+      } else {
+        console.log('🔄 Redirecionando para /dashboard');
+        setLocation('/dashboard');
+      }
       
       
     } catch (error: any) {

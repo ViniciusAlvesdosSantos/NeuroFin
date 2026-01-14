@@ -29,9 +29,17 @@ const updateBudgetSchema = z.object({
 type CreateCategoryFormData = z.infer<typeof createCategorySchema>;
 type UpdateBudgetFormData = z.infer<typeof updateBudgetSchema>;
 
-export default function ExpensesByCategory() {
+interface ExpensesByCategoryProps {
+  filteredTransactions?: any[];
+  accountName?: string;
+}
+
+export default function ExpensesByCategory({ filteredTransactions, accountName }: ExpensesByCategoryProps = {}) {
   const { categories, fetchCategories, createCategory, updateCategory } = useCategoryStore();
-  const { transactions, fetchTransactions } = useTransactionStore();
+  const { transactions: allTransactions, fetchTransactions } = useTransactionStore();
+  
+  // Usar filteredTransactions se fornecido, caso contrário usar todas as transações
+  const transactions = filteredTransactions || allTransactions;
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -153,7 +161,10 @@ export default function ExpensesByCategory() {
       <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
-            <CardTitle>Gastos por Categoria</CardTitle>
+            <CardTitle>
+              Gastos por Categoria
+              {accountName && <span className="text-sm font-normal text-muted-foreground ml-2">({accountName})</span>}
+            </CardTitle>
             <Button
               variant="ghost"
               size="sm"

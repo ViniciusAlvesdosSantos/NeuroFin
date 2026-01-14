@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { createAccountSchema, type CreateAccountFormData } from '@/lib/validators';
 import CreateTransactionModal from '@/components/ui/CreateTransactionModal';
 import Header from '@/components/Header';
+import QuickAddButton from '@/components/QuickAddButton';
 
 export default function Accounts() {
   const isAuthenticated = useRequireAuth();
@@ -247,6 +248,9 @@ export default function Accounts() {
       onClose={()=> setIsModalOpen(false)}
       
       />
+
+      {/* Quick Add Button (FAB) */}
+      <QuickAddButton />
     </div>
   );
 }

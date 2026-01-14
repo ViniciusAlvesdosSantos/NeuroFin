@@ -69,7 +69,7 @@ export interface CreateAccountRequest {
   accountName: string;
   color?: string;
   icon?: string;
-  balance?: number;
+  balance?: string;
 }
 
 export interface UpdateAccountRequest {

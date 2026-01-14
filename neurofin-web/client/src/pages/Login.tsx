@@ -44,7 +44,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Molda Invest</CardTitle>
+          <CardTitle className="text-2xl">NeuroFin</CardTitle>
           <CardDescription>
             Faça login com email ou CPF
           </CardDescription>

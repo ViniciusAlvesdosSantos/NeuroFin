@@ -27,16 +27,17 @@ export const verifyOtpSchema = z.object({
 });
 
 export const createAccountSchema = z.object({
-  accountName: z
+  name: z
     .string()
-    .min(1, 'Nome da conta é obrigatório'),
-  color: z.string().optional(),
-  icon: z.string().optional(),
+    .min(3, 'Nome da conta deve ter pelo menos 3 caracteres')
+    .max(50, 'Nome da conta deve ter no máximo 50 caracteres'),
+  color: z.string().min(1, 'Selecione uma cor'),
+  icon: z.string().min(1, 'Selecione um ícone'),
   balance: z
-    .number()
-    .min(0, 'Saldo não pode ser negativo')
+    .string()
+    .regex(/^\d{1,15}(\.\d{1,3})?$/, 'Valor inválido')
     .optional()
-    .default(0),
+    .default('0'),
 });
 
 export const createTransactionSchema = z.object({

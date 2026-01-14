@@ -1,4 +1,4 @@
-# Ideias de Design - Molda Invest
+# Ideias de Design - NeuroFin
 
 ## Resposta 1: Minimalismo Moderno com Foco em Dados (Probabilidade: 0.08)
 
