@@ -102,16 +102,16 @@ export default function QuickTransactionModal({ isOpen, onClose }: QuickTransact
   // Filtrar categorias por tipo
   const filteredCategories = categories.filter((cat) => cat.type === selectedType);
 
-  // Conta padrão (primeira conta ativa)
-  const defaultAccount = accounts.find((acc) => acc.status === 'ACTIVE');
+  // Conta padrão (primeira conta ativa ou primeira conta disponível)
+  const defaultAccount = accounts.find((acc) => !acc.status || acc.status === 'ACTIVE') || accounts[0];
 
   const onSubmit = async (data: QuickTransactionForm) => {
     setIsSubmitting(true);
     try {
       const payload = {
         description: data.description || 'Transação rápida',
-        amount: data.amount,
-        date: new Date().toISOString().split('T')[0], // Data de hoje
+        amount: data.amount, // Enviar como número
+        date: new Date().toISOString(),
         type: data.type,
         categoryId: data.categoryId,
         accountId: data.accountId || defaultAccount?.id || accounts[0]?.id,

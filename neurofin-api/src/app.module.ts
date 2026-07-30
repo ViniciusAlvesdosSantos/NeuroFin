@@ -8,6 +8,10 @@ import { PrismaModule } from './database/prisma.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { MailModule } from './mail/mail.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
+import { GoalsModule } from './modules/goals/goals.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { CacheModule } from './common/cache/cache.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -15,12 +19,15 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
       envFilePath: '.env',
       cache: true,
     }),
+    CacheModule,
     PrismaModule,
     MailModule,
     AuthModule,
     CategoriesModule,
     AccountsModule,
-    TransactionsModule
+    TransactionsModule,
+    GoalsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

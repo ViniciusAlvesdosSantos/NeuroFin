@@ -57,7 +57,13 @@ export default function CreateTransactionModal({
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      await createTransaction(data);
+      // Enviar amount como número
+      const payload = {
+        ...data,
+        amount: parseFloat(data.amount),
+        date: new Date(data.date).toISOString(),
+      };
+      await createTransaction(payload);
       toast.success('Transação criada com sucesso!');
       reset();
       onClose();

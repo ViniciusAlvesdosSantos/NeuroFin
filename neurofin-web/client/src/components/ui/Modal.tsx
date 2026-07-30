@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from 'react';
+import React, { HTMLAttributes, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 
@@ -24,41 +24,80 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
     },
     ref
   ) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    // Fechar modal ao pressionar ESC
+    useEffect(() => {
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && isOpen) {
+          onClose();
+        }
+      };
+
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, onClose]);
+
+    // Prevenir scroll do body quando modal está aberto
+    useEffect(() => {
+      if (isOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = 'unset';
+      }
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }, [isOpen]);
+
+    // Fechar modal ao clicar no background
+    const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.target === e.currentTarget) {
+        onClose();
+      }
+    };
+
     if (!isOpen) return null;
 
-    const sizeStyles = {
-      sm: 'max-w-sm',
-      md: 'max-w-md',
-      lg: 'max-w-lg',
-      xl: 'max-w-xl',
+    const sizeClasses = {
+      sm: 'max-w-md',
+      md: 'max-w-lg',
+      lg: 'max-w-2xl',
+      xl: 'max-w-4xl',
     };
 
     return (
       <>
         {/* Backdrop */}
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 transition-opacity animate-in fade-in duration-200"
           onClick={onClose}
         />
         {/* Modal */}
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div
             ref={ref}
             className={cn(
-              'bg-card text-card-foreground rounded-lg shadow-lg w-full',
-              sizeStyles[size],
+              'bg-card text-card-foreground shadow-2xl border border-border w-full',
+              'rounded-t-[2rem] sm:rounded-2xl',
+              'max-h-[90vh] overflow-y-auto',
+              'animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300',
+              sizeClasses[size],
               className
             )}
             {...props}
           >
+            {/* Mobile drag handle */}
+            <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mt-4 sm:hidden" />
+            
             {/* Header */}
             {(title || closeButton) && (
-              <div className="flex items-center justify-between p-6 border-b border-border">
-                {title && <h2 className="text-lg font-semibold">{title}</h2>}
+              <div className="flex items-center justify-between p-6 md:p-8 pb-4 pt-4 sm:pt-8">
+                {title && <h2 className="text-xl font-bold tracking-tight">{title}</h2>}
                 {closeButton && (
                   <button
                     onClick={onClose}
-                    className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+                    className="ml-auto p-2 bg-muted/50 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -66,7 +105,7 @@ export const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
               </div>
             )}
             {/* Content */}
-            <div className="p-6">{children}</div>
+            <div className="p-6 md:p-8 pt-2">{children}</div>
           </div>
         </div>
       </>
@@ -117,7 +156,7 @@ export const ModalFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex items-center justify-end gap-3 pt-6 border-t border-border', className)}
+    className={cn('flex items-center justify-end gap-3 pt-6 mt-2', className)}
     {...props}
   />
 ));

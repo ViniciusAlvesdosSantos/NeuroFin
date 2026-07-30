@@ -3,110 +3,87 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 import api from '@/lib/api';
 
+type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
+
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+  status: AuthStatus;
   error: string | null;
+  _hasHydrated: boolean;
+  _hasValidatedToken: boolean; // Flag para evitar múltiplas validações na mesma sessão
 
   // Actions
   setUser: (user: User) => void;
-  login: (identifier: string, otpCode: string) => Promise<boolean>;
   logout: () => void;
-  checkAuth: () => Promise<boolean>;
+  checkAuth: (forceValidate?: boolean) => Promise<boolean>;
   clearError: () => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      isAuthenticated: false,
-      isLoading: false,
+      status: 'idle',
       error: null,
+      _hasHydrated: false,
+      _hasValidatedToken: false,
 
       setUser: (user: User) => {
-        set({ user, isAuthenticated: true });
+        set({ user, status: 'authenticated', error: null, _hasValidatedToken: true });
       },
 
-      login: async (identifier: string, otpCode: string) => {
-        set({ isLoading: true, error: null });
-        try {
-          // Backend vai setar cookies automaticamente
-          const response = await api.post('/auth/verify-otp', {
-            identifier,
-            otpCode,
-          });
-
-          const { user } = response.data;
-
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-          return true;
-        } catch (error: any) {
-          console.error('❌ Erro no login:', error);
-          const errorMessage = error.response?.data?.message || 'Erro ao fazer login';
-          set({ error: errorMessage, isLoading: false, isAuthenticated: false });
-          throw error;
-        }
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
       },
 
       logout: () => {
-        // Limpar tokens do localStorage
+        // Limpar todos os storages do app
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('auth-storage');
+        localStorage.removeItem('account-storage');
+        localStorage.removeItem('category-storage');
+        localStorage.removeItem('transaction-storage');
+        localStorage.removeItem('investment-storage');
         
-        set({
-          user: null,
-          isAuthenticated: false,
-          error: null,
-        });
+        set({ user: null, status: 'unauthenticated', error: null, _hasValidatedToken: false });
       },
 
-      // ✅ ESTE É O SENTIDO DO checkAuth:
-      // Ao recarregar a página, verifica se existe cookie válido
-      // e restaura a sessão do usuário
-      checkAuth: async () => {
-        console.log('🔍 checkAuth iniciado');
+      checkAuth: async (forceValidate = false) => {
+        const token = localStorage.getItem('accessToken');
         
-        // Se não tem token no localStorage, não está autenticado
-        const hasToken = localStorage.getItem('accessToken');
-        if (!hasToken) {
-          console.log('❌ checkAuth: Sem token');
-          set({ isAuthenticated: false, user: null });
+        // Sem token = não autenticado
+        if (!token) {
+          set({ status: 'unauthenticated', user: null });
           return false;
         }
 
-        // Tem token, mas não tem user no state → buscar do backend
-        const currentUser = get().user;
-        console.log('🔍 checkAuth: currentUser no state:', currentUser?.email || 'null');
-        
-        if (!currentUser) {
-          try {
-            console.log('🔄 checkAuth: Buscando user do backend...');
-            const response = await api.get<User>('/auth/profile');
-            console.log('✅ checkAuth: User recebido do backend:', response.data.email);
-            set({ 
-              user: response.data, 
-              isAuthenticated: true 
-            });
-            return true;
-          } catch (error) {
-            console.error('❌ checkAuth: Token inválido:', error);
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            set({ isAuthenticated: false, user: null });
-            return false;
-          }
+        // Se já validou nesta sessão e não forçou, usar estado atual
+        const { _hasValidatedToken, user } = get();
+        if (_hasValidatedToken && !forceValidate && user) {
+          set({ status: 'authenticated' });
+          return true;
         }
 
-        // Já tem user no state, mantém autenticado
-        console.log('✅ checkAuth: User já existe no state, mantendo autenticado');
-        set({ isAuthenticated: true });
-        return true;
+        // SEMPRE validar token no backend (primeira vez ou forçado)
+        set({ status: 'loading' });
+        
+        try {
+          const response = await api.get<User>('/auth/profile');
+          set({ 
+            user: response.data, 
+            status: 'authenticated',
+            _hasValidatedToken: true 
+          });
+          return true;
+        } catch (error) {
+          console.error('Token inválido:', error);
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          set({ status: 'unauthenticated', user: null, _hasValidatedToken: false });
+          return false;
+        }
       },
 
       clearError: () => {
@@ -116,10 +93,22 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => localStorage),
-      // Persistir apenas user (tokens ficam em cookies HttpOnly)
       partialize: (state) => ({
         user: state.user,
+        // NÃO persistir _hasValidatedToken - queremos validar a cada nova sessão
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.setHasHydrated(true);
+          // NÃO marcar como autenticado aqui - aguardar validação do token
+          // Status permanece 'idle' até checkAuth ser chamado
+        }
+      },
     }
   )
 );
+
+// Seletores derivados para facilitar uso
+export const selectIsAuthenticated = (state: AuthState) => state.status === 'authenticated';
+export const selectIsLoading = (state: AuthState) => state.status === 'loading' || state.status === 'idle';
+export const selectIsReady = (state: AuthState) => state._hasHydrated && state.status !== 'idle' && state.status !== 'loading';

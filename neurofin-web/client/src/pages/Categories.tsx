@@ -17,7 +17,7 @@ import Header from '@/components/Header';
 import QuickAddButton from '@/components/QuickAddButton';
 
 export default function Categories() {
-  const isAuthenticated = useRequireAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
   const { categories, fetchCategories, createCategory, deleteCategory, isLoading } = useCategoryStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +42,19 @@ export default function Categories() {
     if (isAuthenticated) {
       fetchCategories();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchCategories]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);

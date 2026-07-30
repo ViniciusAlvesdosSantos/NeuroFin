@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ArrowRight, RotateCcw, Wallet } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function VerifyEmail() {
@@ -14,7 +13,6 @@ export default function VerifyEmail() {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        // Pegar o token da URL
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
 
@@ -24,18 +22,15 @@ export default function VerifyEmail() {
           return;
         }
 
-        // Enviar para o backend
         const response = await api.post(`/auth/verify-email?token=${token}`);
-        
+
         setStatus('success');
         setMessage(response.data.message || 'Email verificado com sucesso!');
         toast.success('Email verificado! Você pode fazer login agora.');
 
-        // Redirecionar para login após 3 segundos
         setTimeout(() => {
           setLocation('/login');
-        }, 3000);
-
+        }, 4000);
       } catch (error: any) {
         setStatus('error');
         const errorMessage = error.response?.data?.message || 'Erro ao verificar email';
@@ -48,70 +43,75 @@ export default function VerifyEmail() {
   }, [setLocation]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            {status === 'loading' && (
-              <Loader2 className="w-16 h-16 text-indigo-600 animate-spin" />
-            )}
-            {status === 'success' && (
-              <CheckCircle className="w-16 h-16 text-green-600" />
-            )}
-            {status === 'error' && (
-              <XCircle className="w-16 h-16 text-red-600" />
-            )}
-          </div>
-
-          <CardTitle className="text-2xl">
-            {status === 'loading' && 'Verificando Email...'}
-            {status === 'success' && 'Email Verificado!'}
-            {status === 'error' && 'Erro na Verificação'}
-          </CardTitle>
-
-          <CardDescription>
-            {status === 'loading' && 'Por favor, aguarde enquanto verificamos seu email.'}
-            {message}
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {status === 'success' && (
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Redirecionando para o login em 3 segundos...</p>
+    <div className="auth-layout">
+      <div className="auth-card text-center">
+        {/* Status Icon */}
+        <div className="mb-6">
+          {status === 'loading' && (
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           )}
-
+          {status === 'success' && (
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto animate-bounce-success">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          )}
           {status === 'error' && (
-            <div className="space-y-3">
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => setLocation('/login')}
-              >
-                Ir para Login
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => setLocation('/register')}
-              >
-                Voltar para Registro
-              </Button>
+            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+              <XCircle className="w-8 h-8 text-red-600" />
             </div>
           )}
+        </div>
 
-          {status === 'success' && (
+        <h1 className="text-2xl font-bold text-foreground tracking-tight mb-2">
+          {status === 'loading' && 'Verificando Email...'}
+          {status === 'success' && 'Email Verificado!'}
+          {status === 'error' && 'Erro na Verificação'}
+        </h1>
+
+        <p className="text-sm text-muted-foreground mb-6">
+          {status === 'loading' && 'Por favor, aguarde enquanto verificamos seu email.'}
+          {message}
+        </p>
+
+        {status === 'success' && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Redirecionando para o login em 4 segundos...
+            </p>
             <Button
               variant="primary"
               className="w-full"
               onClick={() => setLocation('/login')}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
             >
               Ir para Login Agora
             </Button>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="space-y-3">
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => setLocation('/login')}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              Ir para Login
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setLocation('/register')}
+              leftIcon={<RotateCcw className="w-4 h-4" />}
+            >
+              Voltar para Registro
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,43 @@
+// ============================================
+// DREAM GOALS (Metas)
+// ============================================
+
+model DreamGoal {
+  id              String    @id @default(uuid())
+  title           String    // Ex: "Viagem Japão"
+  targetAmount    Decimal   @db.Decimal(19, 4)
+  currentAmount   Decimal   @default(0) @db.Decimal(19, 4)
+  deadline        DateTime?
+  icon            String?   @default("🎯")
+  color           String?   @default("#6366F1")
+  isArchived      Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  userId          Int
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  allocations     GoalAllocation[]
+
+  @@map("dream_goals")
+  @@index([userId])
+  @@index([isArchived])
+}
+
+model GoalAllocation {
+  id              String    @id @default(uuid())
+  amount          Decimal   @db.Decimal(19, 4)
+  note            String?
+
+  createdAt       DateTime  @default(now())
+
+  goalId          String
+  goal            DreamGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  userId          Int
+
+  @@map("goal_allocations")
+  @@index([goalId])
+  @@index([userId])
+}

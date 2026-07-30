@@ -7,6 +7,11 @@ enum UserStatus {
   BLOCKED
 }
 
+enum UserPlan {
+  FREE
+  PREMIUM
+}
+
 model User {
   id              Int        @id @default(autoincrement())
   email           String     @unique
@@ -15,17 +20,22 @@ model User {
   phone           String?    @unique
   status          UserStatus @default(PENDING)
   isEmailVerified Boolean    @default(false)
+  password        String?
   otpCode         String?
   otpExpiresAt    DateTime
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   isFirtLogin     Boolean    @default(true)
   currency        String     @default("BRL")
+  plan            UserPlan   @default(FREE)
+
+  lastLoginAt  DateTime?
 
   accounts     Account[]
   categories   Category[]
   transactions Transaction[]
   investments  Investment[]
+  dreamGoals   DreamGoal[]
 
   @@index([email])
   @@index([cpf])

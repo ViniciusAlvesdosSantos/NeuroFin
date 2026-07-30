@@ -23,6 +23,8 @@ import { MailService } from 'src/mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { LoginDto } from './dto/login.dto';
+import { LoginPasswordDto } from './dto/login-password.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -42,7 +44,7 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ 
     summary: '1️⃣ Registrar novo usuário',
-    description: 'Cria conta e envia link de verificação para o email'
+    description: 'Cria conta e envia link de verificação para o email. Opcionalmente pode definir uma senha.'
   })
   @ApiResponse({
     status: 201,
@@ -299,6 +301,139 @@ export class AuthController {
     isFirstLogin: result.user.isFirstLogin // campo do banco
   };
 }
+
+  // ========================================
+  // FLUXO DE LOGIN (SENHA)
+  // ========================================
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: '🔑 Fazer login (com senha)',
+    description: 'Autentica com email/CPF + senha e retorna tokens de autenticação. Apenas para contas que possuem senha cadastrada.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Login realizado com sucesso',
+    schema: {
+      example: {
+        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        expiresIn: 3600,
+        tokenType: 'Bearer',
+        user: {
+          id: 1,
+          name: 'João Silva',
+          email: 'joao@email.com',
+          isFirstLogin: false
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Conta sem senha cadastrada',
+    schema: {
+      example: {
+        message: 'Esta conta não possui senha cadastrada. Use o login por OTP ou cadastre uma senha.',
+        error: 'Bad Request',
+        statusCode: 400
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Senha incorreta ou email não verificado',
+    schema: {
+      example: {
+        message: 'Senha incorreta',
+        error: 'Unauthorized',
+        statusCode: 401
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Email ou CPF não encontrado',
+    schema: {
+      example: {
+        message: 'Email ou CPF não encontrado',
+        error: 'Not Found',
+        statusCode: 404
+      }
+    }
+  })
+  async loginWithPassword(
+    @Body() loginPasswordDto: LoginPasswordDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.loginWithPassword(loginPasswordDto);
+    
+    // ✅ Salvar tokens em cookies HttpOnly
+    response.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 3600000,
+    });
+    
+    response.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 3600000,
+    });
+    
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: result.user,
+      isFirstLogin: result.user.isFirstLogin,
+    };
+  }
+
+  // ========================================
+  // DEFINIR / ALTERAR SENHA
+  // ========================================
+
+  @Post('set-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: '🔒 Definir ou alterar senha',
+    description: 'Permite ao usuário autenticado definir uma senha para login direto (sem OTP). Requer autenticação via JWT.'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Senha definida com sucesso',
+    schema: {
+      example: {
+        message: 'Senha definida com sucesso'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Senhas não conferem ou senha fraca',
+    schema: {
+      example: {
+        message: 'As senhas não conferem',
+        error: 'Bad Request',
+        statusCode: 400
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Token não fornecido ou inválido'
+  })
+  async setPassword(
+    @Request() req,
+    @Body() setPasswordDto: SetPasswordDto,
+  ) {
+    return this.authService.setPassword(req.user.sub, setPasswordDto);
+  }
 
   // ========================================
   // REFRESH TOKEN

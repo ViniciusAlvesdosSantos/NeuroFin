@@ -2,16 +2,21 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { UserStatus } from '@prisma/client';
+import { UserStatus, UserPlan } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/database/prisma.service';
 import { MailService } from 'src/mail/mail.service';
+import { CacheService } from 'src/common/cache/cache.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
+import { LoginPasswordDto } from '../dto/login-password.dto';
+import { SetPasswordDto } from '../dto/set-password.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { VerifyOtpDto } from '../dto/verify-otp.dto';
 import { AccountsService } from 'src/modules/accounts/accounts.service';
@@ -20,6 +25,8 @@ import { CategoriesService } from 'src/modules/categories-services/categories.se
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
@@ -27,7 +34,102 @@ export class AuthService {
     private configService: ConfigService,
     private accountService: AccountsService,
     private categoryService: CategoriesService,
+    private cacheService: CacheService,
   ) {}
+
+  // ========================================
+  // HELPERS DE CACHE
+  // ========================================
+
+  /**
+   * Busca usuário por ID usando cache.
+   * Se encontrado no cache, retorna imediatamente sem ir ao banco.
+   */
+  private async findUserByIdCached(userId: number) {
+    const cacheKey = `user:${userId}:profile`;
+    const cached = this.cacheService.get<any>(cacheKey);
+    if (cached) {
+      this.logger.debug(`Cache HIT: user:${userId}`);
+      return cached;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (user) {
+      this.cacheService.set(cacheKey, user, CacheService.TTL.USER_BY_ID);
+    }
+
+    return user;
+  }
+
+  /**
+   * Busca usuário por email ou CPF (identifier) usando cache.
+   */
+  private async findUserByIdentifierCached(identifier: string) {
+    const cacheKey = `user:identifier:${identifier}`;
+    const cached = this.cacheService.get<any>(cacheKey);
+    if (cached) {
+      this.logger.debug(`Cache HIT: identifier:${identifier}`);
+      return cached;
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { cpf: identifier },
+        ],
+      },
+    });
+
+    if (user) {
+      this.cacheService.set(cacheKey, user, CacheService.TTL.USER_BY_EMAIL);
+    }
+
+    return user;
+  }
+
+  /**
+   * Invalida todos os caches de um usuário específico.
+   */
+  private invalidateUserCache(userId: number, email?: string | null, cpf?: string | null) {
+    this.cacheService.invalidateByPrefix(`user:${userId}`);
+    if (email) this.cacheService.del(`user:identifier:${email}`);
+    if (cpf) this.cacheService.del(`user:identifier:${cpf}`);
+  }
+
+  /**
+   * Gera os tokens de acesso e refresh para um usuário.
+   */
+  private generateTokens(user: { id: number; email: string }) {
+    const accessToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        type: 'access',
+      },
+      {
+        secret: this.configService.get('JWT_SECRET'),
+        expiresIn: this.configService.get('JWT_EXPIRATION', '1h'),
+      },
+    );
+
+    const refreshToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        type: 'refresh',
+      },
+      {
+        secret: this.configService.get('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get('JWT_REFRESH_EXPIRATION', '7d'),
+      },
+    );
+
+    return { accessToken, refreshToken };
+  }
 
   // ========================================
   // CADASTRO (PRÉ-REGISTRO)
@@ -63,6 +165,12 @@ export class AuthService {
       );
     }
 
+    // Hash da senha se fornecida
+    let hashedPassword: string | undefined;
+    if (registerDto.password) {
+      hashedPassword = await bcrypt.hash(registerDto.password, 12);
+    }
+
     // ✅ Criar usuário com status PENDING (ainda não verificado)
     const user = await this.prisma.user.create({
       data: {
@@ -73,6 +181,8 @@ export class AuthService {
         status: UserStatus.PENDING,
         isEmailVerified: false,
         otpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        plan: UserPlan.FREE,
+        password: hashedPassword,
       },
     });
 
@@ -125,9 +235,7 @@ export class AuthService {
       throw new UnauthorizedException('Token inválido ou expirado');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const user = await this.findUserByIdCached(userId);
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -148,6 +256,9 @@ export class AuthService {
         status: UserStatus.ACTIVE,
       },
     });
+
+    // Invalidar cache após update
+    this.invalidateUserCache(userId, user.email, user.cpf);
 
     // ✅ CRIAR CONTA PADRÃO após verificação
     await this.accountService.create(userId, {
@@ -204,14 +315,7 @@ export class AuthService {
   // ========================================
 
   async requestLogin(requestLoginDto: LoginDto): Promise<{ message: string }> {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: requestLoginDto.identifier },
-          { cpf: requestLoginDto.identifier },
-        ],
-      },
-    });
+    const user = await this.findUserByIdentifierCached(requestLoginDto.identifier);
 
     if (!user) {
       throw new NotFoundException('Email ou CPF não encontrado');
@@ -238,12 +342,16 @@ export class AuthService {
       },
     });
 
+    // Invalidar cache pois OTP mudou
+    this.invalidateUserCache(user.id, user.email, user.cpf);
+
     await this.mailService.sendLoginOtp(user.email, otp);
 
     return { message: 'Código enviado para o e-mail' };
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    // Buscar do banco (não do cache) pois precisa do OTP atualizado
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -294,29 +402,10 @@ export class AuthService {
       });
     }
 
-    const accessToken = this.jwtService.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        type: 'access',
-      },
-      {
-        secret: this.configService.get('JWT_SECRET'),
-        expiresIn: this.configService.get('JWT_EXPIRATION', '1h'),
-      },
-    );
+    // Invalidar cache após login
+    this.invalidateUserCache(user.id, user.email, user.cpf);
 
-    const refreshToken = this.jwtService.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        type: 'refresh',
-      },
-      {
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get('JWT_REFRESH_EXPIRATION', '7d'),
-      },
-    );
+    const { accessToken, refreshToken } = this.generateTokens(user);
 
     return {
       accessToken,
@@ -327,9 +416,98 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        isFirstLogin: user.isFirtLogin
+        isFirstLogin: user.isFirtLogin,
       },
     };
+  }
+
+  // ========================================
+  // LOGIN COM SENHA
+  // ========================================
+
+  async loginWithPassword(loginPasswordDto: LoginPasswordDto) {
+    const user = await this.findUserByIdentifierCached(loginPasswordDto.identifier);
+
+    if (!user) {
+      throw new NotFoundException('Email ou CPF não encontrado');
+    }
+
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Email não verificado. Verifique seu email antes de fazer login.',
+      );
+    }
+
+    if (user.status === UserStatus.BLOCKED) {
+      throw new UnauthorizedException('Usuário bloqueado');
+    }
+
+    if (!user.password) {
+      throw new BadRequestException(
+        'Esta conta não possui senha cadastrada. Use o login por OTP ou cadastre uma senha.',
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      loginPasswordDto.password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Senha incorreta');
+    }
+
+    const isFirstLogin = user.isFirtLogin;
+
+    if (isFirstLogin) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isFirtLogin: false },
+      });
+      this.invalidateUserCache(user.id, user.email, user.cpf);
+    }
+
+    const { accessToken, refreshToken } = this.generateTokens(user);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 3600,
+      tokenType: 'Bearer',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        isFirstLogin: isFirstLogin,
+      },
+    };
+  }
+
+  // ========================================
+  // DEFINIR / ALTERAR SENHA
+  // ========================================
+
+  async setPassword(userId: number, setPasswordDto: SetPasswordDto) {
+    if (setPasswordDto.password !== setPasswordDto.confirmPassword) {
+      throw new BadRequestException('As senhas não conferem');
+    }
+
+    const user = await this.findUserByIdCached(userId);
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    const hashedPassword = await bcrypt.hash(setPasswordDto.password, 12);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    // Invalidar cache após mudança de senha
+    this.invalidateUserCache(userId, user.email, user.cpf);
+
+    return { message: 'Senha definida com sucesso' };
   }
 
   // ========================================
@@ -355,9 +533,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token inválido ou expirado');
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const user = await this.findUserByIdCached(userId);
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
@@ -367,17 +543,7 @@ export class AuthService {
       throw new UnauthorizedException('Usuário bloqueado');
     }
 
-    const newAccessToken = this.jwtService.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        type: 'access',
-      },
-      {
-        secret: this.configService.get('JWT_SECRET'),
-        expiresIn: this.configService.get('JWT_EXPIRATION', '1h'),
-      },
-    );
+    const { accessToken: newAccessToken } = this.generateTokens(user);
 
     return {
       accessToken: newAccessToken,
@@ -397,6 +563,10 @@ export class AuthService {
   // ========================================
 
   async validateUser(userId: number) {
+    const cacheKey = `user:${userId}:validation`;
+    const cached = this.cacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -422,6 +592,9 @@ export class AuthService {
     if (!user.isEmailVerified) {
       throw new UnauthorizedException('Email não verificado');
     }
+
+    // Cachear resultado de validação
+    this.cacheService.set(cacheKey, user, CacheService.TTL.USER_VALIDATION);
 
     return user;
   }

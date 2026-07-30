@@ -141,4 +141,18 @@ export const API_ENDPOINTS = {
     UPDATE: '/investments/:id',
     DELETE: '/investments/:id',
   },
+  GOALS: {
+    LIST: '/goals',
+    DETAIL: '/goals/:id',
+    CREATE: '/goals',
+    UPDATE: '/goals/:id',
+    DELETE: '/goals/:id',
+    ALLOCATE: '/goals/:id/allocate',
+  },
+  ANALYTICS: {
+    SAFE_TO_SPEND: '/analytics/safe-to-spend',
+    LAST_ACTIVITY: '/analytics/last-activity',
+    FRESH_START: '/analytics/fresh-start',
+    UPDATE_LOGIN: '/analytics/update-login',
+  },
 };

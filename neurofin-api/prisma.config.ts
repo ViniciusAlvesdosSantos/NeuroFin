@@ -1,8 +1,10 @@
-export default {
+import { defineConfig } from '@prisma/config';
+import dotenv from 'dotenv';
+dotenv.config();
+
+export default defineConfig({
   schema: 'prisma/schema',
   datasource: {
-    url:
-      process.env.DATABASE_URL ||
-      'postgresql://admin:admin@localhost:5433/planner_financas?schema=public',
+    url: process.env.DATABASE_URL,
   },
-};
+});

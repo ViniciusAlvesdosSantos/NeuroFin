@@ -1,24 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { toast } from 'sonner';
-import { set, z } from 'zod';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import api from '@/lib/api';
-import { Shield } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, RefreshCw, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
-
-const otpSchema = z.object({
-  otpCode: z.string()
-    .min(6, 'Código deve ter 6 dígitos')
-    .max(6, 'Código deve ter 6 dígitos')
-    .regex(/^\d+$/, 'Apenas números'),
-});
-
-type OtpFormData = z.infer<typeof otpSchema>;
 
 export default function VerifyOtp() {
   const [, setLocation] = useLocation();
@@ -26,17 +12,10 @@ export default function VerifyOtp() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [identifier, setIdentifier] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<OtpFormData>({
-    resolver: zodResolver(otpSchema),
-  });
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    // Pegar o identificador do sessionStorage
     const storedIdentifier = sessionStorage.getItem('loginIdentifier');
     if (!storedIdentifier) {
       toast.error('Sessão expirada. Faça login novamente.');
@@ -44,56 +23,73 @@ export default function VerifyOtp() {
       return;
     }
     setIdentifier(storedIdentifier);
+    // Focus first input
+    setTimeout(() => inputRefs.current[0]?.focus(), 100);
   }, [setLocation]);
 
-  const onSubmit = async (data: OtpFormData) => {
+  const handleChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1);
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all digits are entered
+    const fullCode = newOtp.join('');
+    if (fullCode.length === 6) {
+      handleSubmit(fullCode);
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = [...otp];
+    for (let i = 0; i < pasted.length; i++) {
+      newOtp[i] = pasted[i];
+    }
+    setOtp(newOtp);
+    if (pasted.length === 6) {
+      handleSubmit(pasted);
+    } else {
+      inputRefs.current[pasted.length]?.focus();
+    }
+  };
+
+  const handleSubmit = async (code: string) => {
+    if (code.length !== 6) return;
     setIsSubmitting(true);
     try {
       const response = await api.post('/auth/verify-otp', {
         identifier,
-        otpCode: data.otpCode,
+        otpCode: code,
       });
-      
+
       const { accessToken, refreshToken, user, isFirstLogin } = response.data;
-      
-      console.log('✅ Resposta do verify-otp:', { 
-        accessToken: accessToken?.substring(0, 20) + '...', 
-        refreshToken: refreshToken?.substring(0, 20) + '...', 
-        user: user?.email, 
-        isFirstLogin 
-      });
-      
-      // Salvar tokens no localStorage
+
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
-      
-      // Verificar se foi salvo corretamente
-      const savedToken = localStorage.getItem('accessToken');
-      console.log('🔍 Token salvo no localStorage:', savedToken?.substring(0, 20) + '...');
-      console.log('🔍 Tokens são iguais?', savedToken === accessToken);
-      
-      // Atualizar estado global do usuário
       setUser(user);
-      console.log('✅ setUser chamado com:', user);
-      
-      // Limpar identifier temporário
       sessionStorage.removeItem('loginIdentifier');
-      
-      toast.success('Login realizado com sucesso!');
 
-      // Redirecionar baseado se é primeiro login
-      if (isFirstLogin) {
-        console.log('🔄 Redirecionando para /onboarding');
-        setLocation('/onboarding');
-      } else {
-        console.log('🔄 Redirecionando para /dashboard');
-        setLocation('/dashboard');
-      }
-      
-      
+      toast.success('Login realizado com sucesso!');
+      setLocation(isFirstLogin ? '/onboarding' : '/dashboard');
     } catch (error: any) {
       const message = error.response?.data?.message || 'Código inválido';
       toast.error(message);
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
     } finally {
       setIsSubmitting(false);
     }
@@ -104,6 +100,8 @@ export default function VerifyOtp() {
     try {
       await api.post('/auth/request-login', { identifier });
       toast.success('Novo código enviado para seu email!');
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
     } catch (error: any) {
       const message = error.response?.data?.message || 'Erro ao reenviar código';
       toast.error(message);
@@ -112,68 +110,94 @@ export default function VerifyOtp() {
     }
   };
 
+  const maskedIdentifier = identifier.includes('@')
+    ? identifier.replace(/(.{2}).+(@.+)/, '$1***$2')
+    : `***.***.${identifier.slice(-5, -2)}-${identifier.slice(-2)}`;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Shield className="w-12 h-12 text-indigo-600" />
-          </div>
-          <CardTitle className="text-2xl">Verificação de Código</CardTitle>
-          <CardDescription>
-            Digite o código de 6 dígitos enviado para seu email
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
-              label="Código OTP"
-              placeholder="000000"
-              maxLength={6}
-              error={errors.otpCode}
-              className="text-center text-2xl tracking-widest"
-              {...register('otpCode')}
+    <div className="auth-layout">
+      <div className="auth-card text-center">
+        {/* Logo */}
+        <div className="auth-logo animate-pulse-glow">
+          <ShieldCheck className="w-7 h-7 text-white" />
+        </div>
+
+        <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">
+          Código de Verificação
+        </h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          Digite o código de 6 dígitos enviado para{' '}
+          <span className="font-semibold text-foreground">{maskedIdentifier}</span>
+        </p>
+
+        {/* OTP Input Grid */}
+        <div className="flex justify-center gap-2.5 mb-6" onPaste={handlePaste}>
+          {otp.map((digit, index) => (
+            <input
+              key={index}
+              ref={(el) => { inputRefs.current[index] = el; }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleChange(index, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              className={`
+                w-12 h-14 text-center text-xl font-bold rounded-xl
+                border-2 transition-all duration-200 outline-none
+                bg-background text-foreground
+                ${digit ? 'border-primary shadow-sm shadow-primary/20' : 'border-input'}
+                focus:border-primary focus:ring-2 focus:ring-primary/20
+                disabled:opacity-50
+              `}
+              disabled={isSubmitting}
             />
+          ))}
+        </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isSubmitting}
-            >
-              {isSubmitting ? 'Verificando...' : 'Verificar Código'}
-            </Button>
+        {/* Submit button (as fallback) */}
+        <Button
+          type="button"
+          variant="primary"
+          className="w-full mb-4"
+          isLoading={isSubmitting}
+          onClick={() => handleSubmit(otp.join(''))}
+          disabled={otp.join('').length !== 6}
+        >
+          {isSubmitting ? 'Verificando...' : 'Verificar Código'}
+        </Button>
 
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={handleResendOtp}
-                isLoading={isResending}
-              >
-                {isResending ? 'Reenviando...' : 'Reenviar Código'}
-              </Button>
+        {/* Actions */}
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={handleResendOtp}
+            isLoading={isResending}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            {isResending ? 'Reenviando...' : 'Reenviar Código'}
+          </Button>
 
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  sessionStorage.removeItem('loginIdentifier');
-                  setLocation('/login');
-                }}
-              >
-                Voltar para Login
-              </Button>
-            </div>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              sessionStorage.removeItem('loginIdentifier');
+              setLocation('/login');
+            }}
+            leftIcon={<ArrowLeft className="w-4 h-4" />}
+          >
+            Voltar para Login
+          </Button>
+        </div>
 
-            <div className="text-center text-sm text-muted-foreground">
-              <p>O código expira em 10 minutos</p>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <p className="text-xs text-muted-foreground mt-4">
+          O código expira em <span className="font-semibold">10 minutos</span>
+        </p>
+      </div>
     </div>
   );
 }

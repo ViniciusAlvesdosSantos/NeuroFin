@@ -11,12 +11,12 @@ import { TransactionType } from '@/types';
 import { TRANSACTION_TYPE_LABELS } from '@/lib/constants';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import CreateTransactionModal from '@/components/ui/CreateTransactionModal';
+import QuickAddTransaction from '@/components/QuickAddTransaction';
 import Header from '@/components/Header';
 import QuickAddButton from '@/components/QuickAddButton';
 
 export default function Transactions() {
-  const isAuthenticated = useRequireAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
   const [, setLocation] = useLocation();
   const { transactions, fetchTransactions, deleteTransaction, isLoading } = useTransactionStore();
   const { accounts, fetchAccounts } = useAccountStore();
@@ -28,7 +28,15 @@ export default function Transactions() {
     if (isAuthenticated) {
       Promise.all([fetchTransactions(), fetchAccounts(), fetchCategories()]);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchTransactions, fetchAccounts, fetchCategories]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   const handleTransactionCreated = () => {
     fetchTransactions();
@@ -159,11 +167,10 @@ export default function Transactions() {
         </Card>
       </main>
 
-      {/* Create Transaction Modal */}
-      <CreateTransactionModal
-      isOpen={isModalOpen}
-      onClose={()=> setIsModalOpen(false)}
-      onSuccess={handleTransactionCreated}
+      {/* Quick Add Transaction Modal - 3 Steps */}
+      <QuickAddTransaction
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
       />
 
       {/* Quick Add Button (FAB) */}

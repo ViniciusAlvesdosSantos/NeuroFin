@@ -18,7 +18,7 @@ import { createInvestmentSchema } from '@/lib/validators';
 import Header from '@/components/Header';
 
 export default function Investments() {
-  const isAuthenticated = useRequireAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
   const { investments, fetchInvestments, createInvestment, isLoading } = useInvestmentStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,7 +45,19 @@ export default function Investments() {
     if (isAuthenticated) {
       Promise.all([fetchInvestments(), fetchAccounts()]);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchInvestments, fetchAccounts]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);

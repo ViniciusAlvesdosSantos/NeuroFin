@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import Header from '@/components/Header';
 
 export default function AccountDetail() {
-  const isAuthenticated = useRequireAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
   const [, setLocation] = useLocation();
   const { id } = useParams();
   const { fetchAccountById } = useAccountStore();
@@ -39,9 +39,17 @@ export default function AccountDetail() {
     if (isAuthenticated) {
       loadData();
     }
-  }, [isAuthenticated, id]);
+  }, [isAuthenticated, id, fetchAccountById, fetchTransactions, setLocation]);
 
-  if (!isAuthenticated || isLoading) {
+  if (isAuthLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return null;
   }
 

@@ -20,8 +20,8 @@ export class CreateTransactionDto {
     })
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
-    @Matches(/^(?!0+(?:\\.0{1,2})?$)\d{1,10}(\.\d{1,2})?$/)
-    amount : string
+    @Type(() => Number)
+    amount: number
 
     @ApiProperty({
         example: "2024-12-26T10:30:00.000Z",

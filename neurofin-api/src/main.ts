@@ -14,8 +14,17 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
   // Configuração do CORS
+  const allowedOrigins = [
+    'http://localhost:8080', 
+    'http://localhost:5173', 
+    'http://localhost:3001'
+  ];
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+
   app.enableCors({
-    origin: ['http://localhost:8080', 'http://localhost:5173', 'http://localhost:3001'], // Adicione todas as origens do seu frontend
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
@@ -40,7 +49,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   console.log('\n');
   console.log(chalk.green.bold('✓ Aplicação iniciada com sucesso!\n'));

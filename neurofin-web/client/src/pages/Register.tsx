@@ -5,18 +5,19 @@ import { useLocation } from 'wouter';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { registerSchema, type RegisterFormData } from '@/lib/validators';
 import { maskCPF, maskPhone, unmaskCPF, unmaskPhone } from '@/lib/formatters';
 import api from '@/lib/api';
-import { Mail, User, FileText, Phone } from 'lucide-react';
-import { email } from 'zod';
+import { Mail, User, FileText, Phone, Lock, Wallet, ArrowRight, Eye, EyeOff, ChevronDown, ChevronUp, CheckCircle, MailCheck } from 'lucide-react';
 
 export default function Register() {
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
 
   const {
     register,
@@ -27,103 +28,124 @@ export default function Register() {
     resolver: zodResolver(registerSchema),
   });
 
+  const password = watch('password');
+
+  const getPasswordStrength = (pwd: string | undefined): { level: number; label: string; color: string } => {
+    if (!pwd || pwd.length === 0) return { level: 0, label: '', color: '' };
+    if (pwd.length < 6) return { level: 1, label: 'Fraca', color: 'bg-red-500' };
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasLower = /[a-z]/.test(pwd);
+    const hasNumber = /\d/.test(pwd);
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(pwd);
+    const score = [hasUpper, hasLower, hasNumber, hasSpecial, pwd.length >= 8].filter(Boolean).length;
+    if (score <= 2) return { level: 2, label: 'Razoável', color: 'bg-orange-500' };
+    if (score <= 3) return { level: 3, label: 'Boa', color: 'bg-yellow-500' };
+    return { level: 4, label: 'Forte', color: 'bg-green-500' };
+  };
+
+  const strength = getPasswordStrength(password);
+
   const onSubmit = async (data: RegisterFormData) => {
     setIsSubmitting(true);
     try {
-      const cleanCpf = unmaskCPF(data.cpf)
-      const cleanPhone = unmaskPhone(data.phone)
-      await api.post('/auth/register', {
+      const cleanCpf = unmaskCPF(data.cpf);
+      const cleanPhone = unmaskPhone(data.phone);
+      const payload: any = {
         name: data.name,
         email: data.email,
         cpf: cleanCpf,
         phone: cleanPhone,
-      })
-      setRegisteredEmail(data.email)
-      setShowVerificationMessage(true)
-      toast.success('Registro realizado! Verifique seu email para continuar.')
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Erro ao registrar'
-      toast.error(message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  };
-
-  const resendEmail = async (registeredEmail: string) => {
-    try {
-      await api.post('auth/resend-verification', { email: registeredEmail })
-      toast.success('Email re-enviado')
+      };
+      if (data.password && data.password.length > 0) {
+        payload.password = data.password;
+      }
+      await api.post('/auth/register', payload);
+      setRegisteredEmail(data.email);
+      setShowVerificationMessage(true);
+      toast.success('Registro realizado! Verifique seu email para continuar.');
     } catch (error: any) {
       const message = error.response?.data?.message || 'Erro ao registrar';
       toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  };
+
+  const resendEmail = async () => {
+    try {
+      await api.post('auth/resend-verification', { email: registeredEmail });
+      toast.success('Email reenviado com sucesso!');
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao reenviar';
+      toast.error(message);
+    }
+  };
 
   if (showVerificationMessage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle>Verifique seu Email</CardTitle>
-            <CardDescription>
-              Enviamos um link de confirmação para {registeredEmail}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center text-sm text-muted-foreground">
-              <p className="mb-4">Clique no link no email para verificar sua conta.</p>
-              <p className="mb-6">Não recebeu o email?</p>
-            </div>
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => {
-                resendEmail(registeredEmail);
-              }}
-            >
+      <div className="auth-layout">
+        <div className="auth-card text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <MailCheck className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Verifique seu Email</h2>
+          <p className="text-sm text-muted-foreground mb-1">
+            Enviamos um link de confirmação para
+          </p>
+          <p className="text-sm font-semibold text-primary mb-6">{registeredEmail}</p>
+
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Não recebeu o email?</p>
+            <Button variant="secondary" className="w-full" onClick={resendEmail}>
               Enviar novamente
             </Button>
             <Button
               variant="primary"
               className="w-full"
               onClick={() => setLocation('/login')}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
             >
               Ir para Login
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Criar Conta</CardTitle>
-          <CardDescription>
-            Preencha os dados abaixo para se registrar
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
-              label="Nome Completo"
-              placeholder="João Silva"
-              icon={<User className="w-4 h-4" />}
-              error={errors.name}
-              {...register('name')}
-            />
+    <div className="auth-layout">
+      <div className="auth-card">
+        {/* Logo + Title */}
+        <div className="text-center mb-6">
+          <div className="auth-logo">
+            <Wallet className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Criar Conta</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Comece a organizar suas finanças agora
+          </p>
+        </div>
 
-            <Input
-              label="Email"
-              type="email"
-              placeholder="seu@email.com"
-              icon={<Mail className="w-4 h-4" />}
-              error={errors.email}
-              {...register('email')}
-            />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Input
+            label="Nome Completo"
+            placeholder="João Silva"
+            icon={<User className="w-4 h-4" />}
+            error={errors.name}
+            {...register('name')}
+          />
 
+          <Input
+            label="Email"
+            type="email"
+            placeholder="seu@email.com"
+            icon={<Mail className="w-4 h-4" />}
+            error={errors.email}
+            {...register('email')}
+          />
+
+          <div className="grid grid-cols-2 gap-3">
             <Input
               label="CPF"
               placeholder="000.000.000-00"
@@ -141,29 +163,122 @@ export default function Register() {
               mask={maskPhone}
               {...register('phone')}
             />
+          </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isSubmitting}
+          {/* Optional password section */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowPasswordSection(!showPasswordSection)}
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors w-full"
             >
-              {isSubmitting ? 'Registrando...' : 'Registrar'}
-            </Button>
+              <Lock className="w-3.5 h-3.5" />
+              <span>Definir senha (opcional)</span>
+              {showPasswordSection ? (
+                <ChevronUp className="w-3.5 h-3.5 ml-auto" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 ml-auto" />
+              )}
+            </button>
 
-            <div className="text-center text-sm text-muted-foreground">
+            {showPasswordSection && (
+              <div className="mt-3 space-y-3 p-3 rounded-lg bg-accent/30 border border-accent">
+                <p className="text-xs text-muted-foreground">
+                  Com uma senha, você poderá fazer login rapidamente sem precisar de um código OTP por email.
+                </p>
+
+                <div className="relative">
+                  <Input
+                    label="Senha"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min. 6 caracteres"
+                    icon={<Lock className="w-4 h-4" />}
+                    error={errors.password}
+                    {...register('password')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Password strength indicator */}
+                {password && password.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                            i <= strength.level ? strength.color : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className={`text-xs font-medium ${
+                      strength.level <= 1 ? 'text-red-500' :
+                      strength.level <= 2 ? 'text-orange-500' :
+                      strength.level <= 3 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {strength.label}
+                    </p>
+                  </div>
+                )}
+
+                <div className="relative">
+                  <Input
+                    label="Confirmar Senha"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Repita a senha"
+                    icon={<CheckCircle className="w-4 h-4" />}
+                    error={errors.confirmPassword}
+                    {...register('confirmPassword')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            isLoading={isSubmitting}
+            rightIcon={!isSubmitting ? <ArrowRight className="w-4 h-4" /> : undefined}
+          >
+            {isSubmitting ? 'Criando conta...' : 'Criar Conta'}
+          </Button>
+
+          {/* Footer */}
+          <div className="auth-divider">
+            <span>ou</span>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
               Já tem conta?{' '}
               <button
                 type="button"
                 onClick={() => setLocation('/login')}
-                className="text-indigo-600 hover:underline font-medium"
+                className="text-primary hover:underline font-semibold transition-colors"
               >
                 Faça login
               </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            </p>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

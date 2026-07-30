@@ -105,7 +105,7 @@ export interface Transaction {
 
 export interface CreateTransactionRequest {
   description: string;
-  amount: number;
+  amount: number; // Backend espera número
   date: string;
   type: TransactionType;
   categoryId?: string;
@@ -244,3 +244,89 @@ export interface InvestmentSummary {
   averageProfitability: number;
   investments: Investment[];
 }
+
+// ============================================
+// DREAM GOALS (Metas)
+// ============================================
+export interface DreamGoal {
+  id: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: string;
+  icon: string;
+  color: string;
+  isArchived: boolean;
+  userId: number;
+  createdAt: string;
+  updatedAt: string;
+  allocations: GoalAllocation[];
+}
+
+export interface GoalAllocation {
+  id: string;
+  amount: number;
+  note?: string;
+  goalId: string;
+  userId: number;
+  createdAt: string;
+}
+
+export interface CreateGoalRequest {
+  title: string;
+  targetAmount: number;
+  deadline?: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface UpdateGoalRequest {
+  title?: string;
+  targetAmount?: number;
+  deadline?: string;
+  icon?: string;
+  color?: string;
+  isArchived?: boolean;
+}
+
+export interface AllocateGoalRequest {
+  amount: number;
+  note?: string;
+}
+
+export interface AllocateGoalResponse {
+  goal: DreamGoal;
+  allocation: GoalAllocation;
+  percentage: number;
+  milestoneReached: string | null;
+}
+
+// ============================================
+// ANALYTICS (Safe to Spend)
+// ============================================
+export interface SafeToSpendData {
+  safeToSpendDaily: number;
+  safeToSpendTotal: number;
+  totalBalance: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  allocatedToGoals: number;
+  projectedRemainingExpenses: number;
+  todayExpenses: number;
+  dailyUsagePercent: number;
+  daysRemaining: number;
+  daysInMonth: number;
+  currentDay: number;
+  status: 'healthy' | 'warning' | 'danger';
+}
+
+export interface LastActivityData {
+  lastLoginAt: string | null;
+  daysSinceLastLogin: number | null;
+  isAbsent: boolean;
+}
+
+export interface FreshStartRequest {
+  accountBalances: { accountId: number; realBalance: number }[];
+}
+

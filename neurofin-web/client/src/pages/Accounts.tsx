@@ -18,7 +18,7 @@ import Header from '@/components/Header';
 import QuickAddButton from '@/components/QuickAddButton';
 
 export default function Accounts() {
-  const isAuthenticated = useRequireAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useRequireAuth();
   const [, setLocation] = useLocation();
   const { accounts, fetchAccounts, createAccount, deleteAccount, isLoading } = useAccountStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,7 +43,19 @@ export default function Accounts() {
     if (isAuthenticated) {
       fetchAccounts();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchAccounts]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);

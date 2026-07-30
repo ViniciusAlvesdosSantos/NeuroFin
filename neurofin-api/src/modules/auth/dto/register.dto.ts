@@ -1,11 +1,12 @@
 import { 
   IsEmail, 
   IsString, 
+  IsOptional,
   MinLength, 
   MaxLength,
   Matches,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({ 
@@ -48,4 +49,19 @@ export class RegisterDto {
   @IsString()
   @Matches(/^\d{10,11}$/, { message: 'Telefone inválido (10 ou 11 dígitos)' })
   phone: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Senha do usuário (opcional — se não informar, login será apenas via OTP)',
+    example: 'MinhaSenh@123',
+    minLength: 6,
+    maxLength: 128
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
+  @MaxLength(128, { message: 'Senha deve ter no máximo 128 caracteres' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+    message: 'Senha deve conter ao menos uma letra maiúscula, uma minúscula e um número',
+  })
+  password?: string;
 }

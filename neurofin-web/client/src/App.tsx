@@ -1,19 +1,21 @@
-import { Toaster } from 'sonner';
-import { Route, Switch } from 'wouter';
-import ErrorBoundary from './components/ErrorBoundary';
-import { ThemeProvider } from './contexts/ThemeContext';
-import Register from './pages/Register';
-import Login from './pages/Login';
-import VerifyEmail from './pages/VerifyEmail';
-import Onboarding from './pages/Onboarding';
-import Dashboard from './pages/Dashboard';
-import Accounts from './pages/Accounts';
-import AccountDetail from './pages/AccountDetail';
-import Transactions from './pages/Transactions';
-import Categories from './pages/Categories';
-import Investments from './pages/Investments';
-import NotFound from './pages/NotFound';
-import VerifyOtp from './pages/VerifyOTP';
+import { Toaster } from "sonner";
+import { Route, Switch } from "wouter";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import Register from "./pages/Register";
+import Login from "./pages/Login";
+import VerifyEmail from "./pages/VerifyEmail";
+import Onboarding from "./pages/Onboarding";
+import Dashboard from "./pages/Dashboard";
+import Accounts from "./pages/Accounts";
+import AccountDetail from "./pages/AccountDetail";
+import Transactions from "./pages/Transactions";
+import Categories from "./pages/Categories";
+import Investments from "./pages/Investments";
+import Goals from "./pages/Goals";
+import Simulator from "./pages/Simulator";
+import NotFound from "./pages/NotFound";
+import VerifyOtp from "./pages/VerifyOTP";
 
 function Router() {
   return (
@@ -23,7 +25,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/auth/verify-email" component={VerifyEmail} />
       <Route path="/onboarding" component={Onboarding} />
-      <Route path="/auth/verify-otp" component={VerifyOtp}/>
+      <Route path="/auth/verify-otp" component={VerifyOtp} />
 
       {/* Main Routes */}
       <Route path="/dashboard" component={Dashboard} />
@@ -32,6 +34,8 @@ function Router() {
       <Route path="/transactions" component={Transactions} />
       <Route path="/categories" component={Categories} />
       <Route path="/investments" component={Investments} />
+      <Route path="/goals" component={Goals} />
+      <Route path="/simulator" component={Simulator} />
 
       {/* Fallback */}
       <Route path="/" component={Dashboard} />
@@ -42,13 +46,16 @@ function Router() {
 
 function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
-        <Toaster position="top-center" />
-        <Router />
-      </ThemeProvider>
-    </ErrorBoundary>
+    <div className="min-h-screen">
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="light">
+          <Toaster position="top-center" />
+          <Router />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </div>
   );
 }
 
 export default App;
+

@@ -35,9 +35,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-foreground mb-2">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             {label}
-            {props.required && <span className="text-red-500 ml-1">*</span>}
+            {props.required && <span className="text-destructive ml-1">*</span>}
           </label>
         )}
         <div className="relative">
@@ -50,12 +50,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             onChange={handleChange}
             className={cn(
-              'w-full px-3 py-2 rounded-md border transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+              'w-full px-3 py-2.5 rounded-xl text-sm transition-all duration-200',
+              'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary',
               'disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed',
+              'placeholder:text-muted-foreground/50',
               icon && 'pl-10',
-              error && 'border-red-500 focus:ring-red-500',
-              variant === 'outlined' && 'border-input bg-background',
+              error && 'border-destructive focus:ring-destructive/30 focus:border-destructive',
+              variant === 'outlined' && 'border border-input bg-background hover:border-primary/40',
               variant === 'filled' && 'border-0 bg-muted',
               className
             )}
@@ -63,7 +64,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           />
         </div>
         {error && (
-          <p className="text-sm text-red-500 mt-1">{error.message}</p>
+          <p className="text-xs text-destructive mt-1 font-medium">{error.message}</p>
         )}
       </div>
     );
