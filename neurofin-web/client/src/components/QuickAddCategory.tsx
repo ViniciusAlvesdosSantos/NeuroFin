@@ -97,19 +97,21 @@ export default function QuickAddCategory({ isOpen, onClose }: QuickAddCategoryPr
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex flex-col justify-end sm:flex-row sm:justify-end p-0"
           onClick={reset}
         >
           <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '100%' }}
             onClick={(e) => e.stopPropagation()}
             className="bg-card text-card-foreground border border-border w-full sm:w-[480px] sm:rounded-[2rem] rounded-t-[2rem] p-6 max-h-[85vh] overflow-y-auto shadow-2xl sm:p-8"
           >
             {/* Mobile drag handle */}
             <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-6 sm:hidden" />
 
+            <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mt-4 mb-2 sm:hidden shrink-0" />
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 pt-2 sm:pt-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold tracking-tight">
@@ -371,6 +373,7 @@ export default function QuickAddCategory({ isOpen, onClose }: QuickAddCategoryPr
                   }`}
                 />
               ))}
+            </div>
             </div>
           </motion.div>
         </motion.div>
